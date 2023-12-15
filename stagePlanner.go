@@ -39,16 +39,16 @@ var stageSymbolMap = map[OperatorSymbol]evaluationOperator{
 }
 
 /*
-	A "precedent" is a function which will recursively parse new evaluateionStages from a given stream of tokens.
-	It's called a `precedent` because it is expected to handle exactly what precedence of operator,
-	and defer to other `precedent`s for other operators.
+A "precedent" is a function which will recursively parse new evaluateionStages from a given stream of tokens.
+It's called a `precedent` because it is expected to handle exactly what precedence of operator,
+and defer to other `precedent`s for other operators.
 */
 type precedent func(stream *tokenStream) (*evaluationStage, error)
 
 /*
-	A convenience function for specifying the behavior of a `precedent`.
-	Most `precedent` functions can be described by the same function, just with different type checks, symbols, and error formats.
-	This struct is passed to `makePrecedentFromPlanner` to create a `precedent` function.
+A convenience function for specifying the behavior of a `precedent`.
+Most `precedent` functions can be described by the same function, just with different type checks, symbols, and error formats.
+This struct is passed to `makePrecedentFromPlanner` to create a `precedent` function.
 */
 type precedencePlanner struct {
 	validSymbols map[string]OperatorSymbol
@@ -145,8 +145,8 @@ func init() {
 }
 
 /*
-	Given a planner, creates a function which will evaluate a specific precedence level of operators,
-	and link it to other `precedent`s which recurse to parse other precedence levels.
+Given a planner, creates a function which will evaluate a specific precedence level of operators,
+and link it to other `precedent`s which recurse to parse other precedence levels.
 */
 func makePrecedentFromPlanner(planner *precedencePlanner) precedent {
 
@@ -174,11 +174,11 @@ func makePrecedentFromPlanner(planner *precedencePlanner) precedent {
 }
 
 /*
-	Creates a `evaluationStageList` object which represents an execution plan (or tree)
-	which is used to completely evaluate a set of tokens at evaluation-time.
-	The three stages of evaluation can be thought of as parsing strings to tokens, then tokens to a stage list, then evaluation with parameters.
+Creates a `evaluationStageList` object which represents an execution plan (or tree)
+which is used to completely evaluate a set of tokens at evaluation-time.
+The three stages of evaluation can be thought of as parsing strings to tokens, then tokens to a stage list, then evaluation with parameters.
 */
-func planStages(tokens []ExpressionToken) (*evaluationStage, error) {
+func planStages(tokens []ExpressionToken, ops *OperatorOverloadMap) (*evaluationStage, error) {
 
 	stream := newTokenStream(tokens)
 
@@ -191,7 +191,7 @@ func planStages(tokens []ExpressionToken) (*evaluationStage, error) {
 	// this could probably be avoided with a different planning method
 	reorderStages(stage)
 
-	stage = elideLiterals(stage)
+	stage = elideLiterals(stage, ops)
 	return stage, nil
 }
 
@@ -205,8 +205,8 @@ func planTokens(stream *tokenStream) (*evaluationStage, error) {
 }
 
 /*
-	The most usual method of parsing an evaluation stage for a given precedence.
-	Most stages use the same logic
+The most usual method of parsing an evaluation stage for a given precedence.
+Most stages use the same logic
 */
 func planPrecedenceLevel(
 	stream *tokenStream,
@@ -290,7 +290,7 @@ func planPrecedenceLevel(
 }
 
 /*
-	A special case where functions need to be of higher precedence than values, and need a special wrapped execution stage operator.
+A special case where functions need to be of higher precedence than values, and need a special wrapped execution stage operator.
 */
 func planFunction(stream *tokenStream) (*evaluationStage, error) {
 
@@ -365,8 +365,8 @@ func planAccessor(stream *tokenStream) (*evaluationStage, error) {
 }
 
 /*
-	A truly special precedence function, this handles all the "lowest-case" errata of the process, including literals, parmeters,
-	clauses, and prefixes.
+A truly special precedence function, this handles all the "lowest-case" errata of the process, including literals, parmeters,
+clauses, and prefixes.
 */
 func planValue(stream *tokenStream) (*evaluationStage, error) {
 
@@ -445,8 +445,8 @@ func planValue(stream *tokenStream) (*evaluationStage, error) {
 }
 
 /*
-	Convenience function to pass a triplet of typechecks between `findTypeChecks` and `planPrecedenceLevel`.
-	Each of these members may be nil, which indicates that type does not matter for that value.
+Convenience function to pass a triplet of typechecks between `findTypeChecks` and `planPrecedenceLevel`.
+Each of these members may be nil, which indicates that type does not matter for that value.
 */
 type typeChecks struct {
 	left     stageTypeCheck
@@ -455,7 +455,7 @@ type typeChecks struct {
 }
 
 /*
-	Maps a given [symbol] to a set of typechecks to be used during runtime.
+Maps a given [symbol] to a set of typechecks to be used during runtime.
 */
 func findTypeChecks(symbol OperatorSymbol) typeChecks {
 
@@ -550,8 +550,8 @@ func findTypeChecks(symbol OperatorSymbol) typeChecks {
 }
 
 /*
-	During stage planning, stages of equal precedence are parsed such that they'll be evaluated in reverse order.
-	For commutative operators like "+" or "-", it's no big deal. But for order-specific operators, it ruins the expected result.
+During stage planning, stages of equal precedence are parsed such that they'll be evaluated in reverse order.
+For commutative operators like "+" or "-", it's no big deal. But for order-specific operators, it ruins the expected result.
 */
 func reorderStages(rootStage *evaluationStage) {
 
@@ -596,9 +596,9 @@ func reorderStages(rootStage *evaluationStage) {
 }
 
 /*
-	Performs a "mirror" on a subtree of stages.
-	This mirror functionally inverts the order of execution for all members of the [stages] list.
-	That list is assumed to be a root-to-leaf (ordered) list of evaluation stages, where each is a right-hand stage of the last.
+Performs a "mirror" on a subtree of stages.
+This mirror functionally inverts the order of execution for all members of the [stages] list.
+That list is assumed to be a root-to-leaf (ordered) list of evaluation stages, where each is a right-hand stage of the last.
 */
 func mirrorStageSubtree(stages []*evaluationStage) {
 
@@ -643,27 +643,27 @@ func mirrorStageSubtree(stages []*evaluationStage) {
 }
 
 /*
-	Recurses through all operators in the entire tree, eliding operators where both sides are literals.
+Recurses through all operators in the entire tree, eliding operators where both sides are literals.
 */
-func elideLiterals(root *evaluationStage) *evaluationStage {
+func elideLiterals(root *evaluationStage, ops *OperatorOverloadMap) *evaluationStage {
 
 	if root.leftStage != nil {
-		root.leftStage = elideLiterals(root.leftStage)
+		root.leftStage = elideLiterals(root.leftStage, ops)
 	}
 
 	if root.rightStage != nil {
-		root.rightStage = elideLiterals(root.rightStage)
+		root.rightStage = elideLiterals(root.rightStage, ops)
 	}
 
-	return elideStage(root)
+	return elideStage(root, ops)
 }
 
 /*
-	Elides a specific stage, if possible.
-	Returns the unmodified [root] stage if it cannot or should not be elided.
-	Otherwise, returns a new stage representing the condensed value from the elided stages.
+Elides a specific stage, if possible.
+Returns the unmodified [root] stage if it cannot or should not be elided.
+Otherwise, returns a new stage representing the condensed value from the elided stages.
 */
-func elideStage(root *evaluationStage) *evaluationStage {
+func elideStage(root *evaluationStage, ops *OperatorOverloadMap) *evaluationStage {
 
 	var leftValue, rightValue, result interface{}
 	var err error
@@ -686,12 +686,12 @@ func elideStage(root *evaluationStage) *evaluationStage {
 
 	// both sides are values, get their actual values.
 	// errors should be near-impossible here. If we encounter them, just abort this optimization.
-	leftValue, err = root.leftStage.operator(nil, nil, nil)
+	leftValue, err = root.leftStage.operator(ops, nil, nil, nil)
 	if err != nil {
 		return root
 	}
 
-	rightValue, err = root.rightStage.operator(nil, nil, nil)
+	rightValue, err = root.rightStage.operator(ops, nil, nil, nil)
 	if err != nil {
 		return root
 	}
@@ -712,7 +712,7 @@ func elideStage(root *evaluationStage) *evaluationStage {
 	}
 
 	// pre-calculate, and return a new stage representing the result.
-	result, err = root.operator(leftValue, rightValue, nil)
+	result, err = root.operator(ops, leftValue, rightValue, nil)
 	if err != nil {
 		return root
 	}

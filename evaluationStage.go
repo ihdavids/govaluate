@@ -17,7 +17,41 @@ const (
 	prefixErrorFormat     string = "Value '%v' cannot be used with the prefix '%v'"
 )
 
-type evaluationOperator func(left interface{}, right interface{}, parameters Parameters) (interface{}, error)
+type Operator func(left interface{}, right interface{}, parameters Parameters) (interface{}, error)
+type OperatorOverloads struct {
+	Type  reflect.Type
+	Sub   Operator
+	Add   Operator
+	Mul   Operator
+	Div   Operator
+	Exp   Operator
+	Mod   Operator
+	Gte   Operator
+	Gt    Operator
+	Lte   Operator
+	Lt    Operator
+	Eq    Operator
+	NEq   Operator
+	And   Operator
+	Or    Operator
+	Neg   Operator
+	Tif   Operator
+	Telse Operator
+	Inv   Operator
+	BNot  Operator
+	BOr   Operator
+	BAnd  Operator
+	BXor  Operator
+	LShft Operator
+	RShft Operator
+	Reg   Operator
+	NReg  Operator
+	In    Operator
+	Sep   Operator
+}
+type OperatorOverloadMap map[reflect.Type]OperatorOverloads
+
+type evaluationOperator func(ops *OperatorOverloadMap, left interface{}, right interface{}, parameters Parameters) (interface{}, error)
 type stageTypeCheck func(value interface{}) bool
 type stageCombinedTypeCheck func(left interface{}, right interface{}) bool
 
@@ -82,12 +116,18 @@ func (this *evaluationStage) isShortCircuitable() bool {
 	return false
 }
 
-func noopStageRight(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+func noopStageRight(ops *OperatorOverloadMap, left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
 	return right, nil
 }
 
-func addStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
-
+func addStage(ops *OperatorOverloadMap, left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	if ops != nil {
+		if ovl, ok := (*ops)[reflect.TypeOf(left)]; ok && ovl.Add != nil {
+			return ovl.Add(left, right, parameters)
+		} else if ovl, ok := (*ops)[reflect.TypeOf(right)]; ok && ovl.Add != nil {
+			return ovl.Add(left, right, parameters)
+		}
+	}
 	// string concat if either are strings
 	if isString(left) || isString(right) {
 		return fmt.Sprintf("%v%v", left, right), nil
@@ -95,81 +135,215 @@ func addStage(left interface{}, right interface{}, parameters Parameters) (inter
 
 	return left.(float64) + right.(float64), nil
 }
-func subtractStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+
+func subtractStage(ops *OperatorOverloadMap, left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	if ops != nil {
+		if ovl, ok := (*ops)[reflect.TypeOf(left)]; ok && ovl.Sub != nil {
+			return ovl.Sub(left, right, parameters)
+		} else if ovl, ok := (*ops)[reflect.TypeOf(right)]; ok && ovl.Sub != nil {
+			return ovl.Sub(left, right, parameters)
+		}
+	}
 	return left.(float64) - right.(float64), nil
 }
-func multiplyStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+func multiplyStage(ops *OperatorOverloadMap, left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	if ops != nil {
+		if ovl, ok := (*ops)[reflect.TypeOf(left)]; ok && ovl.Mul != nil {
+			return ovl.Mul(left, right, parameters)
+		} else if ovl, ok := (*ops)[reflect.TypeOf(right)]; ok && ovl.Mul != nil {
+			return ovl.Mul(left, right, parameters)
+		}
+	}
 	return left.(float64) * right.(float64), nil
 }
-func divideStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+func divideStage(ops *OperatorOverloadMap, left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	if ops != nil {
+		if ovl, ok := (*ops)[reflect.TypeOf(left)]; ok && ovl.Div != nil {
+			return ovl.Div(left, right, parameters)
+		} else if ovl, ok := (*ops)[reflect.TypeOf(right)]; ok && ovl.Div != nil {
+			return ovl.Div(left, right, parameters)
+		}
+	}
 	return left.(float64) / right.(float64), nil
 }
-func exponentStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+func exponentStage(ops *OperatorOverloadMap, left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	if ops != nil {
+		if ovl, ok := (*ops)[reflect.TypeOf(left)]; ok && ovl.Exp != nil {
+			return ovl.Exp(left, right, parameters)
+		} else if ovl, ok := (*ops)[reflect.TypeOf(right)]; ok && ovl.Exp != nil {
+			return ovl.Exp(left, right, parameters)
+		}
+	}
 	return math.Pow(left.(float64), right.(float64)), nil
 }
-func modulusStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+func modulusStage(ops *OperatorOverloadMap, left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	if ops != nil {
+		if ovl, ok := (*ops)[reflect.TypeOf(left)]; ok && ovl.Mod != nil {
+			return ovl.Mod(left, right, parameters)
+		} else if ovl, ok := (*ops)[reflect.TypeOf(right)]; ok && ovl.Mod != nil {
+			return ovl.Mod(left, right, parameters)
+		}
+	}
 	return math.Mod(left.(float64), right.(float64)), nil
 }
-func gteStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+func gteStage(ops *OperatorOverloadMap, left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	if ops != nil {
+		if ovl, ok := (*ops)[reflect.TypeOf(left)]; ok && ovl.Gte != nil {
+			return ovl.Gte(left, right, parameters)
+		} else if ovl, ok := (*ops)[reflect.TypeOf(right)]; ok && ovl.Gte != nil {
+			return ovl.Gte(left, right, parameters)
+		}
+	}
 	if isString(left) && isString(right) {
 		return boolIface(left.(string) >= right.(string)), nil
 	}
 	return boolIface(left.(float64) >= right.(float64)), nil
 }
-func gtStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+func gtStage(ops *OperatorOverloadMap, left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	if ops != nil {
+		if ovl, ok := (*ops)[reflect.TypeOf(left)]; ok && ovl.Gt != nil {
+			return ovl.Gt(left, right, parameters)
+		} else if ovl, ok := (*ops)[reflect.TypeOf(right)]; ok && ovl.Gt != nil {
+			return ovl.Gt(left, right, parameters)
+		}
+	}
 	if isString(left) && isString(right) {
 		return boolIface(left.(string) > right.(string)), nil
 	}
 	return boolIface(left.(float64) > right.(float64)), nil
 }
-func lteStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+func lteStage(ops *OperatorOverloadMap, left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	if ops != nil {
+		if ovl, ok := (*ops)[reflect.TypeOf(left)]; ok && ovl.Lte != nil {
+			return ovl.Lte(left, right, parameters)
+		} else if ovl, ok := (*ops)[reflect.TypeOf(right)]; ok && ovl.Lte != nil {
+			return ovl.Lte(left, right, parameters)
+		}
+	}
 	if isString(left) && isString(right) {
 		return boolIface(left.(string) <= right.(string)), nil
 	}
 	return boolIface(left.(float64) <= right.(float64)), nil
 }
-func ltStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+func ltStage(ops *OperatorOverloadMap, left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	if ops != nil {
+		if ovl, ok := (*ops)[reflect.TypeOf(left)]; ok && ovl.Lt != nil {
+			return ovl.Lt(left, right, parameters)
+		} else if ovl, ok := (*ops)[reflect.TypeOf(right)]; ok && ovl.Lt != nil {
+			return ovl.Lt(left, right, parameters)
+		}
+	}
 	if isString(left) && isString(right) {
 		return boolIface(left.(string) < right.(string)), nil
 	}
 	return boolIface(left.(float64) < right.(float64)), nil
 }
-func equalStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+func equalStage(ops *OperatorOverloadMap, left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	if ops != nil {
+		if ovl, ok := (*ops)[reflect.TypeOf(left)]; ok && ovl.Eq != nil {
+			return ovl.Eq(left, right, parameters)
+		} else if ovl, ok := (*ops)[reflect.TypeOf(right)]; ok && ovl.Eq != nil {
+			return ovl.Eq(left, right, parameters)
+		}
+	}
 	return boolIface(reflect.DeepEqual(left, right)), nil
 }
-func notEqualStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+func notEqualStage(ops *OperatorOverloadMap, left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	if ops != nil {
+		if ovl, ok := (*ops)[reflect.TypeOf(left)]; ok && ovl.NEq != nil {
+			return ovl.NEq(left, right, parameters)
+		} else if ovl, ok := (*ops)[reflect.TypeOf(right)]; ok && ovl.NEq != nil {
+			return ovl.NEq(left, right, parameters)
+		}
+	}
 	return boolIface(!reflect.DeepEqual(left, right)), nil
 }
-func andStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+func andStage(ops *OperatorOverloadMap, left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	if ops != nil {
+		if ovl, ok := (*ops)[reflect.TypeOf(left)]; ok && ovl.And != nil {
+			return ovl.And(left, right, parameters)
+		} else if ovl, ok := (*ops)[reflect.TypeOf(right)]; ok && ovl.And != nil {
+			return ovl.And(left, right, parameters)
+		}
+	}
 	return boolIface(left.(bool) && right.(bool)), nil
 }
-func orStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+func orStage(ops *OperatorOverloadMap, left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	if ops != nil {
+		if ovl, ok := (*ops)[reflect.TypeOf(left)]; ok && ovl.Or != nil {
+			return ovl.Or(left, right, parameters)
+		} else if ovl, ok := (*ops)[reflect.TypeOf(right)]; ok && ovl.Or != nil {
+			return ovl.Or(left, right, parameters)
+		}
+	}
 	return boolIface(left.(bool) || right.(bool)), nil
 }
-func negateStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+func negateStage(ops *OperatorOverloadMap, left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	if ops != nil {
+		if ovl, ok := (*ops)[reflect.TypeOf(left)]; ok && ovl.Neg != nil {
+			return ovl.Neg(left, right, parameters)
+		} else if ovl, ok := (*ops)[reflect.TypeOf(right)]; ok && ovl.Neg != nil {
+			return ovl.Neg(left, right, parameters)
+		}
+	}
 	return -right.(float64), nil
 }
-func invertStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+func invertStage(ops *OperatorOverloadMap, left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	if ops != nil {
+		if ovl, ok := (*ops)[reflect.TypeOf(left)]; ok && ovl.Inv != nil {
+			return ovl.Inv(left, right, parameters)
+		} else if ovl, ok := (*ops)[reflect.TypeOf(right)]; ok && ovl.Inv != nil {
+			return ovl.Inv(left, right, parameters)
+		}
+	}
 	return boolIface(!right.(bool)), nil
 }
-func bitwiseNotStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+func bitwiseNotStage(ops *OperatorOverloadMap, left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	if ops != nil {
+		if ovl, ok := (*ops)[reflect.TypeOf(left)]; ok && ovl.BNot != nil {
+			return ovl.BNot(left, right, parameters)
+		} else if ovl, ok := (*ops)[reflect.TypeOf(right)]; ok && ovl.BNot != nil {
+			return ovl.BNot(left, right, parameters)
+		}
+	}
 	return float64(^int64(right.(float64))), nil
 }
-func ternaryIfStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+func ternaryIfStage(ops *OperatorOverloadMap, left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	if ops != nil {
+		if ovl, ok := (*ops)[reflect.TypeOf(left)]; ok && ovl.Tif != nil {
+			return ovl.Tif(left, right, parameters)
+		} else if ovl, ok := (*ops)[reflect.TypeOf(right)]; ok && ovl.Tif != nil {
+			return ovl.Tif(left, right, parameters)
+		}
+	}
 	if left.(bool) {
 		return right, nil
 	}
 	return nil, nil
 }
-func ternaryElseStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+func ternaryElseStage(ops *OperatorOverloadMap, left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	if ops != nil {
+		if ovl, ok := (*ops)[reflect.TypeOf(left)]; ok && ovl.Telse != nil {
+			return ovl.Telse(left, right, parameters)
+		} else if ovl, ok := (*ops)[reflect.TypeOf(right)]; ok && ovl.Telse != nil {
+			return ovl.Telse(left, right, parameters)
+		}
+	}
 	if left != nil {
 		return left, nil
 	}
 	return right, nil
 }
 
-func regexStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+func regexStage(ops *OperatorOverloadMap, left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
 
+	if ops != nil {
+		if ovl, ok := (*ops)[reflect.TypeOf(left)]; ok && ovl.Reg != nil {
+			return ovl.Reg(left, right, parameters)
+		} else if ovl, ok := (*ops)[reflect.TypeOf(right)]; ok && ovl.Reg != nil {
+			return ovl.Reg(left, right, parameters)
+		}
+	}
 	var pattern *regexp.Regexp
 	var err error
 
@@ -186,9 +360,16 @@ func regexStage(left interface{}, right interface{}, parameters Parameters) (int
 	return pattern.Match([]byte(left.(string))), nil
 }
 
-func notRegexStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+func notRegexStage(ops *OperatorOverloadMap, left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	if ops != nil {
+		if ovl, ok := (*ops)[reflect.TypeOf(left)]; ok && ovl.NReg != nil {
+			return ovl.NReg(left, right, parameters)
+		} else if ovl, ok := (*ops)[reflect.TypeOf(right)]; ok && ovl.NReg != nil {
+			return ovl.NReg(left, right, parameters)
+		}
+	}
 
-	ret, err := regexStage(left, right, parameters)
+	ret, err := regexStage(ops, left, right, parameters)
 	if err != nil {
 		return nil, err
 	}
@@ -196,25 +377,60 @@ func notRegexStage(left interface{}, right interface{}, parameters Parameters) (
 	return !(ret.(bool)), nil
 }
 
-func bitwiseOrStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+func bitwiseOrStage(ops *OperatorOverloadMap, left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	if ops != nil {
+		if ovl, ok := (*ops)[reflect.TypeOf(left)]; ok && ovl.BOr != nil {
+			return ovl.BOr(left, right, parameters)
+		} else if ovl, ok := (*ops)[reflect.TypeOf(right)]; ok && ovl.BOr != nil {
+			return ovl.BOr(left, right, parameters)
+		}
+	}
 	return float64(int64(left.(float64)) | int64(right.(float64))), nil
 }
-func bitwiseAndStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+func bitwiseAndStage(ops *OperatorOverloadMap, left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	if ops != nil {
+		if ovl, ok := (*ops)[reflect.TypeOf(left)]; ok && ovl.BAnd != nil {
+			return ovl.BAnd(left, right, parameters)
+		} else if ovl, ok := (*ops)[reflect.TypeOf(right)]; ok && ovl.BAnd != nil {
+			return ovl.BAnd(left, right, parameters)
+		}
+	}
 	return float64(int64(left.(float64)) & int64(right.(float64))), nil
 }
-func bitwiseXORStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+func bitwiseXORStage(ops *OperatorOverloadMap, left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	if ops != nil {
+		if ovl, ok := (*ops)[reflect.TypeOf(left)]; ok && ovl.BXor != nil {
+			return ovl.BXor(left, right, parameters)
+		} else if ovl, ok := (*ops)[reflect.TypeOf(right)]; ok && ovl.BXor != nil {
+			return ovl.BXor(left, right, parameters)
+		}
+	}
 	return float64(int64(left.(float64)) ^ int64(right.(float64))), nil
 }
-func leftShiftStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+func leftShiftStage(ops *OperatorOverloadMap, left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	if ops != nil {
+		if ovl, ok := (*ops)[reflect.TypeOf(left)]; ok && ovl.LShft != nil {
+			return ovl.LShft(left, right, parameters)
+		} else if ovl, ok := (*ops)[reflect.TypeOf(right)]; ok && ovl.LShft != nil {
+			return ovl.LShft(left, right, parameters)
+		}
+	}
 	return float64(uint64(left.(float64)) << uint64(right.(float64))), nil
 }
-func rightShiftStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+func rightShiftStage(ops *OperatorOverloadMap, left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	if ops != nil {
+		if ovl, ok := (*ops)[reflect.TypeOf(left)]; ok && ovl.RShft != nil {
+			return ovl.RShft(left, right, parameters)
+		} else if ovl, ok := (*ops)[reflect.TypeOf(right)]; ok && ovl.RShft != nil {
+			return ovl.RShft(left, right, parameters)
+		}
+	}
 	return float64(uint64(left.(float64)) >> uint64(right.(float64))), nil
 }
 
 func makeParameterStage(parameterName string) evaluationOperator {
 
-	return func(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	return func(ops *OperatorOverloadMap, left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
 		value, err := parameters.Get(parameterName)
 		if err != nil {
 			return nil, err
@@ -225,14 +441,14 @@ func makeParameterStage(parameterName string) evaluationOperator {
 }
 
 func makeLiteralStage(literal interface{}) evaluationOperator {
-	return func(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	return func(ops *OperatorOverloadMap, left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
 		return literal, nil
 	}
 }
 
 func makeFunctionStage(function ExpressionFunction) evaluationOperator {
 
-	return func(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	return func(ops *OperatorOverloadMap, left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
 
 		if right == nil {
 			return function()
@@ -293,7 +509,7 @@ func makeAccessorStage(pair []string) evaluationOperator {
 
 	reconstructed := strings.Join(pair, ".")
 
-	return func(left interface{}, right interface{}, parameters Parameters) (ret interface{}, err error) {
+	return func(ops *OperatorOverloadMap, left interface{}, right interface{}, parameters Parameters) (ret interface{}, err error) {
 
 		var params []reflect.Value
 
@@ -404,8 +620,14 @@ func makeAccessorStage(pair []string) evaluationOperator {
 	}
 }
 
-func separatorStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
-
+func separatorStage(ops *OperatorOverloadMap, left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	if ops != nil {
+		if ovl, ok := (*ops)[reflect.TypeOf(left)]; ok && ovl.Sep != nil {
+			return ovl.Sep(left, right, parameters)
+		} else if ovl, ok := (*ops)[reflect.TypeOf(right)]; ok && ovl.Sep != nil {
+			return ovl.Sep(left, right, parameters)
+		}
+	}
 	var ret []interface{}
 
 	switch left.(type) {
@@ -418,8 +640,14 @@ func separatorStage(left interface{}, right interface{}, parameters Parameters) 
 	return ret, nil
 }
 
-func inStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
-
+func inStage(ops *OperatorOverloadMap, left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	if ops != nil {
+		if ovl, ok := (*ops)[reflect.TypeOf(left)]; ok && ovl.In != nil {
+			return ovl.In(left, right, parameters)
+		} else if ovl, ok := (*ops)[reflect.TypeOf(right)]; ok && ovl.In != nil {
+			return ovl.In(left, right, parameters)
+		}
+	}
 	for _, value := range right.([]interface{}) {
 		if left == value {
 			return true, nil
@@ -467,8 +695,8 @@ func isFloat64(value interface{}) bool {
 }
 
 /*
-	Addition usually means between numbers, but can also mean string concat.
-	String concat needs one (or both) of the sides to be a string.
+Addition usually means between numbers, but can also mean string concat.
+String concat needs one (or both) of the sides to be a string.
 */
 func additionTypeCheck(left interface{}, right interface{}) bool {
 
@@ -482,8 +710,8 @@ func additionTypeCheck(left interface{}, right interface{}) bool {
 }
 
 /*
-	Comparison can either be between numbers, or lexicographic between two strings,
-	but never between the two.
+Comparison can either be between numbers, or lexicographic between two strings,
+but never between the two.
 */
 func comparatorTypeCheck(left interface{}, right interface{}) bool {
 
@@ -505,8 +733,8 @@ func isArray(value interface{}) bool {
 }
 
 /*
-	Converting a boolean to an interface{} requires an allocation.
-	We can use interned bools to avoid this cost.
+Converting a boolean to an interface{} requires an allocation.
+We can use interned bools to avoid this cost.
 */
 func boolIface(b bool) interface{} {
 	if b {
