@@ -21,6 +21,91 @@ type evaluationOperator func(left interface{}, right interface{}, parameters Par
 type stageTypeCheck func(value interface{}) bool
 type stageCombinedTypeCheck func(left interface{}, right interface{}) bool
 
+type Operator func(left interface{}, right interface{}, parameters Parameters) (interface{}, error)
+type OpAdd interface {
+	OpAdd(left interface{}, right interface{}, parameters Parameters) (interface{}, error)
+}
+type OpSub interface {
+	OpSub(left interface{}, right interface{}, parameters Parameters) (interface{}, error)
+}
+type OpMul interface {
+	OpMul(left interface{}, right interface{}, parameters Parameters) (interface{}, error)
+}
+type OpDiv interface {
+	OpDiv(left interface{}, right interface{}, parameters Parameters) (interface{}, error)
+}
+type OpPow interface {
+	OpPow(left interface{}, right interface{}, parameters Parameters) (interface{}, error)
+}
+type OpMod interface {
+	OpMod(left interface{}, right interface{}, parameters Parameters) (interface{}, error)
+}
+type OpGte interface {
+	OpGte(left interface{}, right interface{}, parameters Parameters) (interface{}, error)
+}
+type OpGt interface {
+	OpGt(left interface{}, right interface{}, parameters Parameters) (interface{}, error)
+}
+type OpLte interface {
+	OpLte(left interface{}, right interface{}, parameters Parameters) (interface{}, error)
+}
+type OpLt interface {
+	OpLt(left interface{}, right interface{}, parameters Parameters) (interface{}, error)
+}
+type OpEq interface {
+	OpEq(left interface{}, right interface{}, parameters Parameters) (interface{}, error)
+}
+type OpNEq interface {
+	OpNEq(left interface{}, right interface{}, parameters Parameters) (interface{}, error)
+}
+type OpAnd interface {
+	OpAnd(left interface{}, right interface{}, parameters Parameters) (interface{}, error)
+}
+type OpOr interface {
+	OpOr(left interface{}, right interface{}, parameters Parameters) (interface{}, error)
+}
+type OpNeg interface {
+	OpNeg(left interface{}, right interface{}, parameters Parameters) (interface{}, error)
+}
+type OpTif interface {
+	OpTif(left interface{}, right interface{}, parameters Parameters) (interface{}, error)
+}
+type OpTelse interface {
+	OpTelse(left interface{}, right interface{}, parameters Parameters) (interface{}, error)
+}
+type OpInv interface {
+	OpInv(left interface{}, right interface{}, parameters Parameters) (interface{}, error)
+}
+type OpBNot interface {
+	OpBNot(left interface{}, right interface{}, parameters Parameters) (interface{}, error)
+}
+type OpBOr interface {
+	OpBOr(left interface{}, right interface{}, parameters Parameters) (interface{}, error)
+}
+type OpBAnd interface {
+	OpBAnd(left interface{}, right interface{}, parameters Parameters) (interface{}, error)
+}
+type OpBXor interface {
+	OpBXor(left interface{}, right interface{}, parameters Parameters) (interface{}, error)
+}
+type OpLShft interface {
+	OpLShft(left interface{}, right interface{}, parameters Parameters) (interface{}, error)
+}
+type OpRShft interface {
+	OpRShft(left interface{}, right interface{}, parameters Parameters) (interface{}, error)
+}
+type OpReg interface {
+	OpReg(left interface{}, right interface{}, parameters Parameters) (interface{}, error)
+}
+type OpNReg interface {
+	OpNReg(left interface{}, right interface{}, parameters Parameters) (interface{}, error)
+}
+type OpIn interface {
+	OpIn(left interface{}, right interface{}, parameters Parameters) (interface{}, error)
+}
+type OpSep interface {
+	OpSep(left interface{}, right interface{}, parameters Parameters) (interface{}, error)
+}
 type evaluationStage struct {
 	symbol OperatorSymbol
 
@@ -87,7 +172,12 @@ func noopStageRight(left interface{}, right interface{}, parameters Parameters) 
 }
 
 func addStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
-
+	if op, ok := left.(OpAdd); ok {
+		return op.OpAdd(left, right, parameters)
+	}
+	if op, ok := right.(OpAdd); ok {
+		return op.OpAdd(left, right, parameters)
+	}
 	// string concat if either are strings
 	if isString(left) || isString(right) {
 		return fmt.Sprintf("%v%v", left, right), nil
@@ -96,72 +186,180 @@ func addStage(left interface{}, right interface{}, parameters Parameters) (inter
 	return left.(float64) + right.(float64), nil
 }
 func subtractStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	if op, ok := left.(OpSub); ok {
+		return op.OpSub(left, right, parameters)
+	}
+	if op, ok := right.(OpSub); ok {
+		return op.OpSub(left, right, parameters)
+	}
 	return left.(float64) - right.(float64), nil
 }
 func multiplyStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	if op, ok := left.(OpMul); ok {
+		return op.OpMul(left, right, parameters)
+	}
+	if op, ok := right.(OpMul); ok {
+		return op.OpMul(left, right, parameters)
+	}
 	return left.(float64) * right.(float64), nil
 }
 func divideStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	if op, ok := left.(OpDiv); ok {
+		return op.OpDiv(left, right, parameters)
+	}
+	if op, ok := right.(OpDiv); ok {
+		return op.OpDiv(left, right, parameters)
+	}
 	return left.(float64) / right.(float64), nil
 }
 func exponentStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	if op, ok := left.(OpPow); ok {
+		return op.OpPow(left, right, parameters)
+	}
+	if op, ok := right.(OpPow); ok {
+		return op.OpPow(left, right, parameters)
+	}
 	return math.Pow(left.(float64), right.(float64)), nil
 }
 func modulusStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	if op, ok := left.(OpMod); ok {
+		return op.OpMod(left, right, parameters)
+	}
+	if op, ok := right.(OpMod); ok {
+		return op.OpMod(left, right, parameters)
+	}
 	return math.Mod(left.(float64), right.(float64)), nil
 }
 func gteStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	if op, ok := left.(OpGte); ok {
+		return op.OpGte(left, right, parameters)
+	}
+	if op, ok := right.(OpGte); ok {
+		return op.OpGte(left, right, parameters)
+	}
 	if isString(left) && isString(right) {
 		return boolIface(left.(string) >= right.(string)), nil
 	}
 	return boolIface(left.(float64) >= right.(float64)), nil
 }
 func gtStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	if op, ok := left.(OpGt); ok {
+		return op.OpGt(left, right, parameters)
+	}
+	if op, ok := right.(OpGt); ok {
+		return op.OpGt(left, right, parameters)
+	}
 	if isString(left) && isString(right) {
 		return boolIface(left.(string) > right.(string)), nil
 	}
 	return boolIface(left.(float64) > right.(float64)), nil
 }
 func lteStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	if op, ok := left.(OpLte); ok {
+		return op.OpLte(left, right, parameters)
+	}
+	if op, ok := right.(OpLte); ok {
+		return op.OpLte(left, right, parameters)
+	}
 	if isString(left) && isString(right) {
 		return boolIface(left.(string) <= right.(string)), nil
 	}
 	return boolIface(left.(float64) <= right.(float64)), nil
 }
 func ltStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	if op, ok := left.(OpLt); ok {
+		return op.OpLt(left, right, parameters)
+	}
+	if op, ok := right.(OpLt); ok {
+		return op.OpLt(left, right, parameters)
+	}
 	if isString(left) && isString(right) {
 		return boolIface(left.(string) < right.(string)), nil
 	}
 	return boolIface(left.(float64) < right.(float64)), nil
 }
 func equalStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	if op, ok := left.(OpEq); ok {
+		return op.OpEq(left, right, parameters)
+	}
+	if op, ok := right.(OpEq); ok {
+		return op.OpEq(left, right, parameters)
+	}
 	return boolIface(reflect.DeepEqual(left, right)), nil
 }
 func notEqualStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	if op, ok := left.(OpNEq); ok {
+		return op.OpNEq(left, right, parameters)
+	}
+	if op, ok := right.(OpNEq); ok {
+		return op.OpNEq(left, right, parameters)
+	}
 	return boolIface(!reflect.DeepEqual(left, right)), nil
 }
 func andStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	if op, ok := left.(OpAnd); ok {
+		return op.OpAnd(left, right, parameters)
+	}
+	if op, ok := right.(OpAnd); ok {
+		return op.OpAnd(left, right, parameters)
+	}
 	return boolIface(left.(bool) && right.(bool)), nil
 }
 func orStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	if op, ok := left.(OpOr); ok {
+		return op.OpOr(left, right, parameters)
+	}
+	if op, ok := right.(OpOr); ok {
+		return op.OpOr(left, right, parameters)
+	}
 	return boolIface(left.(bool) || right.(bool)), nil
 }
 func negateStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	if op, ok := left.(OpNeg); ok {
+		return op.OpNeg(left, right, parameters)
+	}
+	if op, ok := right.(OpNeg); ok {
+		return op.OpNeg(left, right, parameters)
+	}
 	return -right.(float64), nil
 }
 func invertStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	if op, ok := left.(OpInv); ok {
+		return op.OpInv(left, right, parameters)
+	}
+	if op, ok := right.(OpInv); ok {
+		return op.OpInv(left, right, parameters)
+	}
 	return boolIface(!right.(bool)), nil
 }
 func bitwiseNotStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	if op, ok := left.(OpBNot); ok {
+		return op.OpBNot(left, right, parameters)
+	}
+	if op, ok := right.(OpBNot); ok {
+		return op.OpBNot(left, right, parameters)
+	}
 	return float64(^int64(right.(float64))), nil
 }
 func ternaryIfStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	if op, ok := left.(OpTif); ok {
+		return op.OpTif(left, right, parameters)
+	}
+	if op, ok := right.(OpTif); ok {
+		return op.OpTif(left, right, parameters)
+	}
 	if left.(bool) {
 		return right, nil
 	}
 	return nil, nil
 }
 func ternaryElseStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	if op, ok := left.(OpTelse); ok {
+		return op.OpTelse(left, right, parameters)
+	}
+	if op, ok := right.(OpTelse); ok {
+		return op.OpTelse(left, right, parameters)
+	}
 	if left != nil {
 		return left, nil
 	}
@@ -169,6 +367,12 @@ func ternaryElseStage(left interface{}, right interface{}, parameters Parameters
 }
 
 func regexStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	if op, ok := left.(OpReg); ok {
+		return op.OpReg(left, right, parameters)
+	}
+	if op, ok := right.(OpReg); ok {
+		return op.OpReg(left, right, parameters)
+	}
 
 	var pattern *regexp.Regexp
 	var err error
@@ -187,6 +391,12 @@ func regexStage(left interface{}, right interface{}, parameters Parameters) (int
 }
 
 func notRegexStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	if op, ok := left.(OpNReg); ok {
+		return op.OpNReg(left, right, parameters)
+	}
+	if op, ok := right.(OpNReg); ok {
+		return op.OpNReg(left, right, parameters)
+	}
 
 	ret, err := regexStage(left, right, parameters)
 	if err != nil {
@@ -197,18 +407,48 @@ func notRegexStage(left interface{}, right interface{}, parameters Parameters) (
 }
 
 func bitwiseOrStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	if op, ok := left.(OpBOr); ok {
+		return op.OpBOr(left, right, parameters)
+	}
+	if op, ok := right.(OpBOr); ok {
+		return op.OpBOr(left, right, parameters)
+	}
 	return float64(int64(left.(float64)) | int64(right.(float64))), nil
 }
 func bitwiseAndStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	if op, ok := left.(OpBAnd); ok {
+		return op.OpBAnd(left, right, parameters)
+	}
+	if op, ok := right.(OpBAnd); ok {
+		return op.OpBAnd(left, right, parameters)
+	}
 	return float64(int64(left.(float64)) & int64(right.(float64))), nil
 }
 func bitwiseXORStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	if op, ok := left.(OpBXor); ok {
+		return op.OpBXor(left, right, parameters)
+	}
+	if op, ok := right.(OpBXor); ok {
+		return op.OpBXor(left, right, parameters)
+	}
 	return float64(int64(left.(float64)) ^ int64(right.(float64))), nil
 }
 func leftShiftStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	if op, ok := left.(OpLShft); ok {
+		return op.OpLShft(left, right, parameters)
+	}
+	if op, ok := right.(OpLShft); ok {
+		return op.OpLShft(left, right, parameters)
+	}
 	return float64(uint64(left.(float64)) << uint64(right.(float64))), nil
 }
 func rightShiftStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	if op, ok := left.(OpRShft); ok {
+		return op.OpRShft(left, right, parameters)
+	}
+	if op, ok := right.(OpRShft); ok {
+		return op.OpRShft(left, right, parameters)
+	}
 	return float64(uint64(left.(float64)) >> uint64(right.(float64))), nil
 }
 
@@ -405,6 +645,12 @@ func makeAccessorStage(pair []string) evaluationOperator {
 }
 
 func separatorStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	if op, ok := left.(OpSep); ok {
+		return op.OpSep(left, right, parameters)
+	}
+	if op, ok := right.(OpSep); ok {
+		return op.OpSep(left, right, parameters)
+	}
 
 	var ret []interface{}
 
@@ -419,6 +665,12 @@ func separatorStage(left interface{}, right interface{}, parameters Parameters) 
 }
 
 func inStage(left interface{}, right interface{}, parameters Parameters) (interface{}, error) {
+	if op, ok := left.(OpIn); ok {
+		return op.OpIn(left, right, parameters)
+	}
+	if op, ok := right.(OpIn); ok {
+		return op.OpIn(left, right, parameters)
+	}
 
 	for _, value := range right.([]interface{}) {
 		if left == value {
@@ -467,8 +719,8 @@ func isFloat64(value interface{}) bool {
 }
 
 /*
-	Addition usually means between numbers, but can also mean string concat.
-	String concat needs one (or both) of the sides to be a string.
+Addition usually means between numbers, but can also mean string concat.
+String concat needs one (or both) of the sides to be a string.
 */
 func additionTypeCheck(left interface{}, right interface{}) bool {
 
@@ -482,8 +734,8 @@ func additionTypeCheck(left interface{}, right interface{}) bool {
 }
 
 /*
-	Comparison can either be between numbers, or lexicographic between two strings,
-	but never between the two.
+Comparison can either be between numbers, or lexicographic between two strings,
+but never between the two.
 */
 func comparatorTypeCheck(left interface{}, right interface{}) bool {
 
@@ -505,8 +757,8 @@ func isArray(value interface{}) bool {
 }
 
 /*
-	Converting a boolean to an interface{} requires an allocation.
-	We can use interned bools to avoid this cost.
+Converting a boolean to an interface{} requires an allocation.
+We can use interned bools to avoid this cost.
 */
 func boolIface(b bool) interface{} {
 	if b {
