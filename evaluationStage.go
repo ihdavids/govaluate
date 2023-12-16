@@ -723,7 +723,10 @@ Addition usually means between numbers, but can also mean string concat.
 String concat needs one (or both) of the sides to be a string.
 */
 func additionTypeCheck(left interface{}, right interface{}) bool {
-
+	// Again we make the assumption here that add has all of them
+	if _, ok := left.(OpAdd); ok {
+		return true
+	}
 	if isFloat64(left) && isFloat64(right) {
 		return true
 	}
@@ -733,12 +736,70 @@ func additionTypeCheck(left interface{}, right interface{}) bool {
 	return true
 }
 
+func overrideTypeCheck[T interface{}](left interface{}, right interface{}, others typeChecks) bool {
+	if _, ok := left.(T); ok {
+		if others.right != nil {
+			return others.right(right)
+		}
+		return true
+	}
+	if _, ok := right.(T); ok {
+		if others.left != nil {
+			return others.left(left)
+		}
+		return true
+	}
+	if others.combined == nil {
+		return others.left(left) && others.right(right)
+	} else {
+		return others.combined(left, right)
+	}
+}
+
+func regTypeCheck[T interface{}](left interface{}, right interface{}) bool {
+	return overrideTypeCheck[T](left, right, typeChecks{
+		left:  isString,
+		right: isRegexOrString,
+	})
+}
+
+func boolTypeCheck[T interface{}](left interface{}, right interface{}) bool {
+	return overrideTypeCheck[T](left, right, typeChecks{
+		left:  isBool,
+		right: isBool,
+	})
+}
+
+func inTypeCheck[T interface{}](left interface{}, right interface{}) bool {
+	return overrideTypeCheck[T](left, right, typeChecks{
+		right: isArray,
+	})
+}
+
+func numericTypeCheck[T interface{}](left interface{}, right interface{}) bool {
+	return overrideTypeCheck[T](left, right, typeChecks{
+		left:  isFloat64,
+		right: isFloat64,
+	})
+}
+
+func singleTypeCheck[T interface{}, F func(interface{}) bool](val interface{}, f F) bool {
+	if _, ok := val.(T); ok {
+		return true
+	}
+	return f(val)
+}
+
 /*
 Comparison can either be between numbers, or lexicographic between two strings,
 but never between the two.
 */
-func comparatorTypeCheck(left interface{}, right interface{}) bool {
+func comparatorTypeCheck[T interface{}](left interface{}, right interface{}) bool {
 
+	// We make the assumption that if you have a Lt you have all of them
+	if _, ok := left.(OpLt); ok {
+		return true
+	}
 	if isFloat64(left) && isFloat64(right) {
 		return true
 	}
