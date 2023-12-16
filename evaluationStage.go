@@ -737,11 +737,11 @@ func additionTypeCheck(left interface{}, right interface{}) bool {
 }
 
 func overrideTypeCheck[T interface{}](left interface{}, right interface{}, others typeChecks) bool {
+	// Either both are overriden or our right type is a basic type we can handle
 	if _, ok := left.(T); ok {
-		if others.right != nil {
-			return others.right(right)
+		if _, ok := right.(T); ok || others.right == nil || others.right(right) {
+			return true
 		}
-		return true
 	}
 	if _, ok := right.(T); ok {
 		if others.left != nil {
