@@ -139,7 +139,7 @@ func readToken(stream *lexerStream, state lexerState, functions map[string]Expre
 		}
 
 		// regular variable - or function?
-		if unicode.IsLetter(character) {
+		if unicode.IsLetter(character) || character == '$' {
 
 			tokenString = readTokenUntilFalse(stream, isVariableName)
 
@@ -298,8 +298,8 @@ func readTokenUntilFalse(stream *lexerStream, condition func(rune) bool) string 
 }
 
 /*
-	Returns the string that was read until the given [condition] was false, or whitespace was broken.
-	Returns false if the stream ended before whitespace was broken or condition was met.
+Returns the string that was read until the given [condition] was false, or whitespace was broken.
+Returns false if the stream ended before whitespace was broken or condition was met.
 */
 func readUntilFalse(stream *lexerStream, includeWhitespace bool, breakWhitespace bool, allowEscaping bool, condition func(rune) bool) (string, bool) {
 
@@ -345,8 +345,8 @@ func readUntilFalse(stream *lexerStream, includeWhitespace bool, breakWhitespace
 }
 
 /*
-	Checks to see if any optimizations can be performed on the given [tokens], which form a complete, valid expression.
-	The returns slice will represent the optimized (or unmodified) list of tokens to use.
+Checks to see if any optimizations can be performed on the given [tokens], which form a complete, valid expression.
+The returns slice will represent the optimized (or unmodified) list of tokens to use.
 */
 func optimizeTokens(tokens []ExpressionToken) ([]ExpressionToken, error) {
 
@@ -385,7 +385,7 @@ func optimizeTokens(tokens []ExpressionToken) ([]ExpressionToken, error) {
 }
 
 /*
-	Checks the balance of tokens which have multiple parts, such as parenthesis.
+Checks the balance of tokens which have multiple parts, such as parenthesis.
 */
 func checkBalance(tokens []ExpressionToken) error {
 
@@ -457,7 +457,8 @@ func isVariableName(character rune) bool {
 	return unicode.IsLetter(character) ||
 		unicode.IsDigit(character) ||
 		character == '_' ||
-		character == '.'
+		character == '.' ||
+		character == '$'
 }
 
 func isNotClosingBracket(character rune) bool {
@@ -466,9 +467,9 @@ func isNotClosingBracket(character rune) bool {
 }
 
 /*
-	Attempts to parse the [candidate] as a Time.
-	Tries a series of standardized date formats, returns the Time if one applies,
-	otherwise returns false through the second return.
+Attempts to parse the [candidate] as a Time.
+Tries a series of standardized date formats, returns the Time if one applies,
+otherwise returns false through the second return.
 */
 func tryParseTime(candidate string) (time.Time, bool) {
 
