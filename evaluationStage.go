@@ -727,6 +727,9 @@ func additionTypeCheck(left interface{}, right interface{}) bool {
 	if _, ok := left.(OpAdd); ok {
 		return true
 	}
+	if _, ok := right.(OpAdd); ok {
+		return true
+	}
 	if isFloat64(left) && isFloat64(right) {
 		return true
 	}
